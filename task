@@ -1,0 +1,12 @@
+#Задание 3
+#Установка базовых элементов IIS
+Install-WindowsFeature -Name Web-Server -IncludeManagementTools
+#Удаляем сайт по-умолчанию
+Remove-IISSite -Name 'Default Web Site'
+#Создаем папку для нового сайта
+New-Item -ItemType Directory -Name 'Mysite' -Path 'C:\'
+#Создаем сайт
+New-IISSite -Name 'MyWebsite' -PhysicalPath 'C:\Mysite\' -BindingInformation "*:4321:"
+#
+$pool = "IIS:\AppPools\DefaultAppPool"
+Set-ItemProperty $pool -Name Recycling.periodicRestart.time -Value 03:00:00
