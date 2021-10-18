@@ -13,34 +13,37 @@ Set-ItemProperty $pool -Name Recycling.periodicRestart.time -Value 03:00:00
 =============================================================================================================================================
 #задание 2
 #Задаем переменные
-$GLPath = "$env:SystemDrive\gitlab-runner" 
-$GLBin  = "$GLPath\gitlab-runner.exe"
+$GLPath = "$env:SystemDrive\gitlab-runner"  #Путь до папки с агентом установщика
+$GLBin  = "$GLPath\gitlab-runner.exe" #Путь до исполняемого файла установщика
 $Token  = $using:Token
 $User   = $using:User
 $Pass   = $using:Pass
-$GitUri = 'https://github.com/git-for-windows/git/releases/download/v2.25.0.windows.1/Git-2.25.0-64-bit.exe'
+$GitUri = 'https://github.com/git-for-windows/git/releases/download/v2.25.0.windows.1/Git-2.25.0-64-bit.exe' 
 $Uri    = 'https://gitlab-runner-downloads.s3.amazonaws.com/latest/binaries/gitlab-runner-windows-amd64.exe'
 
-$progressPreference = 'silentlyContinue'
+$progressPreference = 'silentlyContinue' #Опрделение параметров ?
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]'Ssl3,Tls,Tls11,Tls12'
 
-& git --version | Out-Null
+& git --version | Out-Null #В этом блоке мы проверяем установлен ли гит уже, и если нет (Out-Null), то начинаем установку
 if ($LASTEXITCODE -ne 0) {
-    Set-Location "$env:windir\temp"
-    Invoke-WebRequest -UseBasicParsing -Uri $GitUri -OutFile ".\git-installer.exe"
-    Start-Process '.\git-installer.exe' -ArgumentList '/SILENT' -NoNewWindow -Wait
-    Remove-Item '.\git-installer.exe' -Force
+    Set-Location "$env:windir\temp" #Задаем папку для временных файлов на период установки
+    Invoke-WebRequest -UseBasicParsing -Uri $GitUri -OutFile ".\git-installer.exe" #позволяет обратиться по адресу из Переменной $GitUri к установочному файлу
+    Start-Process '.\git-installer.exe' -ArgumentList '/SILENT' -NoNewWindow -Wait #Зупус инсталятора (тихий режим)
+    Remove-Item '.\git-installer.exe' -Force #Удаляем инсталятор
     $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
 }
 
-if(Get-Service "gitlab-runner" -ea 0){
+# Проверяем, запущен ли сервис
+
+#Если нет, то проверяем версию, если старая, то скачиваем и устанавливаем новую, запускаем службу
+if(Get-Service "gitlab-runner" -ea 0){ #Не понял что за оператор -ea (по логике должен быть  -eq), 
     $bin = (Get-WmiObject win32_service | Where-Object{$_.Name -like 'gitlab-runner'} | Select-Object PathName).PathName -split ' ' | Select-Object -First 1
     $GLPath = Split-Path $bin -Parent
     Set-Location $GLPath
-    & $bin --version | Where-Object {$_ -match '^Version:\s*(\d+\.\d+\.\d+)'} | Out-Null
-    $VersionOld = [version]$Matches[1]
+    & $bin --version | Where-Object {$_ -match '^Version:\s*(\d+\.\d+\.\d+)'} | Out-Null #Также проверяем версию запущенного агента
+    $VersionOld = [version]$Matches[1] 
     if(!$VersionOld) {
-        throw "Error"
+        throw "Error №
         exit 1
     }
 
@@ -66,6 +69,7 @@ if(Get-Service "gitlab-runner" -ea 0){
 
     Write-Host "`nDone."
 }
+#Служба запущена, подключаем локальный репозиторий
 else{
     New-Item -ItemType Directory -Path $GLPath -ea 0
     Set-Location $GLPath
